@@ -1459,6 +1459,11 @@ GatewayConfigExtProc holds runtime-specific configuration for the external proce
 
 
 <ApiField
+  name="logLevel"
+  type="string"
+  required="false"
+  description="LogLevel defines the log level for the external processor."
+/><ApiField
   name="kubernetes"
   type="[KubernetesContainerSpec](https://gateway.envoyproxy.io/docs/api/extension_types/#kubernetescontainerspec)"
   required="false"

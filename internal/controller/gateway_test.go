@@ -681,7 +681,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err)
 		hasEffectiveRoute := true
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, nil, "some-uuid", hasEffectiveRoute)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, nil, "some-uuid", hasEffectiveRoute, v2Container, logLevel)
 		require.NoError(t, err)
 
 		annotated, err := kube.CoreV1().Pods(egNamespace).Get(t.Context(), "pod1", metav1.GetOptions{})
@@ -701,7 +701,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 
 		// Since it has already a sidecar container, passing the hasEffectiveRoute=false should result in adding an annotation to the deployment.
 		hasEffectiveRoute = false
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "another-uuid", hasEffectiveRoute)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "another-uuid", hasEffectiveRoute, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -734,7 +734,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 
 		// When there's no effective route, this should not add the annotation to the deployment.
 		hasEffectiveRoute := false
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", hasEffectiveRoute)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", hasEffectiveRoute, v2Container, logLevel)
 		require.NoError(t, err)
 		deployment, err = kube.AppsV1().Deployments(egNamespace).Get(t.Context(), "deployment1", metav1.GetOptions{})
 		require.NoError(t, err)
@@ -743,7 +743,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 
 		// When there's an effective route, this should add the annotation to the deployment.
 		hasEffectiveRoute = true
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", hasEffectiveRoute)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", hasEffectiveRoute, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -778,7 +778,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err)
 
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -792,7 +792,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 		require.NoError(t, err)
 
 		// Call annotateGatewayPods again but the deployment's pod template should not be updated again.
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		deployment, err = kube.AppsV1().Deployments(egNamespace).Get(t.Context(), "deployment2", metav1.GetOptions{})
@@ -826,7 +826,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err)
 
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -840,7 +840,7 @@ func TestGatewayController_annotateGatewayPods(t *testing.T) {
 		require.NoError(t, err)
 
 		// Call annotateGatewayPods again but the deployment's pod template should not be updated again.
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, []appsv1.Deployment{*deployment}, nil, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		deployment, err = kube.AppsV1().Deployments(egNamespace).Get(t.Context(), "deployment3", metav1.GetOptions{})
@@ -887,7 +887,7 @@ func TestGatewayController_annotateDaemonSetGatewayPods(t *testing.T) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err)
 
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -922,7 +922,7 @@ func TestGatewayController_annotateDaemonSetGatewayPods(t *testing.T) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err)
 
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -936,7 +936,7 @@ func TestGatewayController_annotateDaemonSetGatewayPods(t *testing.T) {
 		require.NoError(t, err)
 
 		// Call annotateGatewayPods again, but the deployment's pod template should not be updated again.
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		deployment, err = kube.AppsV1().DaemonSets(egNamespace).Get(t.Context(), "deployment2", metav1.GetOptions{})
@@ -970,7 +970,7 @@ func TestGatewayController_annotateDaemonSetGatewayPods(t *testing.T) {
 		}, metav1.CreateOptions{})
 		require.NoError(t, err)
 
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		// Check the deployment's pod template has the annotation.
@@ -984,7 +984,7 @@ func TestGatewayController_annotateDaemonSetGatewayPods(t *testing.T) {
 		require.NoError(t, err)
 
 		// Call annotateGatewayPods again, but the deployment's pod template should not be updated again.
-		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true)
+		err = c.annotateGatewayPods(t.Context(), []corev1.Pod{*pod}, nil, []appsv1.DaemonSet{*dss}, "some-uuid", true, v2Container, logLevel)
 		require.NoError(t, err)
 
 		deployment, err = kube.AppsV1().DaemonSets(egNamespace).Get(t.Context(), "deployment3", metav1.GetOptions{})

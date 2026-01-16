@@ -65,6 +65,10 @@ type GatewayConfigSpec struct {
 
 // GatewayConfigExtProc holds runtime-specific configuration for the external processor.
 type GatewayConfigExtProc struct {
+	// LogLevel defines the log level for the external processor.
+	//
+	// +optional
+	LogLevel *string `json:"logLevel,omitempty"`
 	// Kubernetes defines the configuration for running the external processor as a Kubernetes container.
 	//
 	// +optional

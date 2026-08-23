@@ -212,3 +212,18 @@ type HTTPHeaderMutation struct {
 	// +kubebuilder:validation:MaxItems=16
 	Remove []string `json:"remove,omitempty"`
 }
+
+// HTTPHeaderValueFilter defines an allow list for values in a comma-separated request header.
+type HTTPHeaderValueFilter struct {
+	// Name is the name of the HTTP header whose values will be filtered.
+	//
+	// +kubebuilder:validation:MinLength=1
+	Name gwapiv1.HeaderName `json:"name"`
+
+	// Values is the allow list for this header. Values are compared after trimming spaces.
+	//
+	// +listType=set
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=64
+	Values []string `json:"values"`
+}

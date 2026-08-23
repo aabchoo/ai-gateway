@@ -388,12 +388,15 @@ func TestGatewayController_reconcileFilterConfigSecret(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{Name: "apple", Namespace: gwNamespace},
 			Spec: aigv1b1.AIServiceBackendSpec{
 				BackendRef: gwapiv1.BackendObjectReference{Name: "some-backend1", Namespace: ptr.To[gwapiv1.Namespace](gwNamespace)},
-				HeaderMutation: &aigv1b1.HTTPHeaderMutation{Set: []gwapiv1.HTTPHeader{
-					// Header name should be normalized to lowercase in the filter config.
-					{Name: "X-Foo", Value: "foo"},
-				}, Remove: []string{"x-Bar"}},
+					HeaderMutation: &aigv1b1.HTTPHeaderMutation{Set: []gwapiv1.HTTPHeader{
+						// Header name should be normalized to lowercase in the filter config.
+						{Name: "X-Foo", Value: "foo"},
+					}, Remove: []string{"x-Bar"}},
+					HeaderValueFilters: []aigv1b1.HTTPHeaderValueFilter{
+						{Name: "Anthropic-Beta", Values: []string{"beta-a", "beta-b"}},
+					},
+				},
 			},
-		},
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "orange", Namespace: gwNamespace},
 			Spec: aigv1b1.AIServiceBackendSpec{
@@ -494,11 +497,14 @@ func TestGatewayController_reconcileFilterConfigSecret(t *testing.T) {
 
 		require.Len(t, fc.Backends[0].HeaderMutation.Set, 1)
 		require.Len(t, fc.Backends[0].HeaderMutation.Remove, 1)
-		require.Equal(t, "x-foo", fc.Backends[0].HeaderMutation.Set[0].Name)
-		require.Equal(t, "foo", fc.Backends[0].HeaderMutation.Set[0].Value)
-		require.Equal(t, "x-bar", fc.Backends[0].HeaderMutation.Remove[0])
+			require.Equal(t, "x-foo", fc.Backends[0].HeaderMutation.Set[0].Name)
+			require.Equal(t, "foo", fc.Backends[0].HeaderMutation.Set[0].Value)
+			require.Equal(t, "x-bar", fc.Backends[0].HeaderMutation.Remove[0])
+			require.Equal(t, []filterapi.HTTPHeaderValueFilter{
+				{Name: "anthropic-beta", Values: []string{"beta-a", "beta-b"}},
+			}, fc.Backends[0].HeaderValueFilters)
+		}
 	}
-}
 
 // TestGatewayController_reconcileFilterConfigSecret_HostnameScopedModels verifies that mixing routes
 // with and without Spec.Hostnames produces a filter config where:

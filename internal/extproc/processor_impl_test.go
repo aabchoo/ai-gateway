@@ -984,6 +984,75 @@ func Test_messagesProcessorUpstreamFilter_ProcessRequestHeaders_AWSAnthropicBeta
 	require.Equal(t, []any{"interleaved-thinking-2025-05-14", "context-1m-2025-08-07"}, betaValues)
 }
 
+func Test_messagesProcessorUpstreamFilter_ProcessRequestHeaders_HeaderValueFilter(t *testing.T) {
+	body := anthropicschema.MessagesRequest{
+		Model:     "anthropic.claude-3-sonnet-20240229-v1:0",
+		MaxTokens: 128,
+		Messages: []anthropicschema.MessageParam{
+			{
+				Role:    anthropicschema.MessageRoleUser,
+				Content: anthropicschema.MessageContent{Text: "hello"},
+			},
+		},
+	}
+	raw, err := json.Marshal(body)
+	require.NoError(t, err)
+
+	originalHeaders := map[string]string{
+		":path":                               "/v1/messages",
+		internalapi.ModelNameHeaderKeyDefault: body.Model,
+		"anthropic-beta":                      "interleaved-thinking-2025-05-14, context-1m-2025-08-07",
+	}
+	p := &messagesProcessorUpstreamFilter{
+		// Simulate the upstream request view after a previous backend attempt. The selected
+		// backend must recompute its filtered value from originalHeaders, not this value.
+		requestHeaders: map[string]string{
+			":path":                               "/v1/messages",
+			internalapi.ModelNameHeaderKeyDefault: body.Model,
+			"anthropic-beta":                      "interleaved-thinking-2025-05-14",
+		},
+		metrics: &mockMetrics{},
+	}
+	r := &messagesProcessorRouterFilter{
+		eh:                     endpointspec.MessagesEndpointSpec{},
+		config:                 &filterapi.RuntimeConfig{},
+		logger:                 slog.Default(),
+		requestHeaders:         originalHeaders,
+		originalRequestBodyRaw: raw,
+		originalRequestBody:    &body,
+		originalModel:          body.Model,
+	}
+
+	err = p.SetBackend(t.Context(), &filterapi.RuntimeBackend{
+		Backend: &filterapi.Backend{
+			Name:   "aws-anthropic",
+			Schema: filterapi.VersionedAPISchema{Name: filterapi.APISchemaAWSAnthropic, Version: "bedrock-2023-05-31"},
+			HeaderValueFilters: []filterapi.HTTPHeaderValueFilter{
+				{Name: "anthropic-beta", Values: []string{"context-1m-2025-08-07"}},
+			},
+		},
+	}, "test-route", r)
+	require.NoError(t, err)
+	require.Equal(t, "context-1m-2025-08-07", p.requestHeaders["anthropic-beta"])
+
+	resp, err := p.ProcessRequestHeaders(t.Context(), nil)
+	require.NoError(t, err)
+	commonRes := resp.Response.(*extprocv3.ProcessingResponse_RequestHeaders).RequestHeaders.Response
+
+	var translatedBody map[string]any
+	err = json.Unmarshal(commonRes.BodyMutation.GetBody(), &translatedBody)
+	require.NoError(t, err)
+
+	betaValues, ok := translatedBody["anthropic_beta"].([]any)
+	require.True(t, ok)
+	require.Equal(t, []any{"context-1m-2025-08-07"}, betaValues)
+
+	require.Contains(t, commonRes.HeaderMutation.SetHeaders, &corev3.HeaderValueOption{
+		AppendAction: corev3.HeaderValueOption_OVERWRITE_IF_EXISTS_OR_ADD,
+		Header:       &corev3.HeaderValue{Key: "anthropic-beta", RawValue: []byte("context-1m-2025-08-07")},
+	})
+}
+
 // Test_chatCompletionProcessorUpstreamFilter_ProcessRequestHeaders_BodyReplaceContract
 // locks the contract for when the upstream filter must NOT replace the request
 // body: when the translator returns no body, no backend HTTPBodyMutation is
@@ -1279,7 +1348,7 @@ func Test_chatCompletionProcessorUpstreamFilter_SensitiveHeaders_RemoveAndRestor
 	t.Run("remove headers", func(t *testing.T) {
 		p := &chatCompletionProcessorUpstreamFilter{
 			requestHeaders: map[string]string{"authorization": "secret", "x-api-key": "key123", "other": "value"},
-			headerMutator:  headermutator.NewHeaderMutator(&headerMutation, originalHeaders),
+			headerMutator:  headermutator.NewHeaderMutator(&headerMutation, nil, originalHeaders),
 			metrics:        &mockMetrics{},
 			translator:     &mockTranslator{t: t, expForceRequestBodyMutation: true, expRequestBody: &body},
 			parent: &chatCompletionProcessorRouterFilter{
@@ -1307,7 +1376,7 @@ func Test_chatCompletionProcessorUpstreamFilter_SensitiveHeaders_RemoveAndRestor
 		// Simulate that sensitive headers were removed and now need to be restored.
 		p := &chatCompletionProcessorUpstreamFilter{
 			requestHeaders: map[string]string{"other": "value"},
-			headerMutator:  headermutator.NewHeaderMutator(&filterapi.HTTPHeaderMutation{Set: headerMutation.Set}, originalHeaders),
+			headerMutator:  headermutator.NewHeaderMutator(&filterapi.HTTPHeaderMutation{Set: headerMutation.Set}, nil, originalHeaders),
 			metrics:        &mockMetrics{},
 			translator:     &mockTranslator{t: t, expForceRequestBodyMutation: true, expRequestBody: &body},
 			parent: &chatCompletionProcessorRouterFilter{
@@ -1336,7 +1405,7 @@ func Test_chatCompletionProcessorUpstreamFilter_SensitiveHeaders_RemoveAndRestor
 		// Simulate that sensitive headers were removed and now need to be restored.
 		p := &chatCompletionProcessorUpstreamFilter{
 			requestHeaders: map[string]string{"other": "value"},
-			headerMutator:  headermutator.NewHeaderMutator(nil, originalHeaders),
+			headerMutator:  headermutator.NewHeaderMutator(nil, nil, originalHeaders),
 			metrics:        &mockMetrics{},
 			translator:     &mockTranslator{t: t, expForceRequestBodyMutation: true, expRequestBody: &body},
 			parent: &chatCompletionProcessorRouterFilter{

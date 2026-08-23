@@ -71,6 +71,15 @@ type AIServiceBackendSpec struct {
 	// +optional
 	HeaderMutation *HTTPHeaderMutation `json:"headerMutation,omitempty"`
 
+	// HeaderValueFilters define backend-specific allow lists for comma-separated request header values.
+	// Each filter is evaluated against the original client request headers for every backend attempt,
+	// including retries and failovers.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=16
+	HeaderValueFilters []HTTPHeaderValueFilter `json:"headerValueFilters,omitempty"`
+
 	// BodyMutation defines the mutation of HTTP request body JSON fields that will be applied to the request
 	// before sending it to the backend.
 	// +optional

@@ -183,6 +183,20 @@ func headerMutationToFilterAPI(m *aigv1b1.HTTPHeaderMutation) *filterapi.HTTPHea
 	return ret
 }
 
+func headerValueFiltersToFilterAPI(filters []aigv1b1.HTTPHeaderValueFilter) []filterapi.HTTPHeaderValueFilter {
+	if len(filters) == 0 {
+		return nil
+	}
+	ret := make([]filterapi.HTTPHeaderValueFilter, 0, len(filters))
+	for _, f := range filters {
+		ret = append(ret, filterapi.HTTPHeaderValueFilter{
+			Name:   strings.ToLower(string(f.Name)),
+			Values: slices.Clone(f.Values),
+		})
+	}
+	return ret
+}
+
 // bodyMutationToFilterAPI converts an aigv1b1.HTTPBodyMutation to filterapi.HTTPBodyMutation.
 func bodyMutationToFilterAPI(m *aigv1b1.HTTPBodyMutation) *filterapi.HTTPBodyMutation {
 	if m == nil {
@@ -475,6 +489,7 @@ func (c *GatewayController) reconcileFilterConfigSecret(
 
 					// Convert to FilterAPI format
 					b.HeaderMutation = headerMutationToFilterAPI(mergedHeaderMutation)
+					b.HeaderValueFilters = headerValueFiltersToFilterAPI(backendObj.Spec.HeaderValueFilters)
 
 					routeBodyMutation := backendRef.BodyMutation
 					backendBodyMutation := backendObj.Spec.BodyMutation

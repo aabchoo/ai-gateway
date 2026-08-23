@@ -18,12 +18,44 @@ type HeaderMutator struct {
 
 	// headerMutations is a list of header mutations to apply.
 	headerMutations *filterapi.HTTPHeaderMutation
+
+	// headerValueFilters is a list of backend-specific comma-separated header value filters.
+	headerValueFilters []filterapi.HTTPHeaderValueFilter
 }
 
-func NewHeaderMutator(headerMutations *filterapi.HTTPHeaderMutation, originalHeaders map[string]string) *HeaderMutator {
+func NewHeaderMutator(
+	headerMutations *filterapi.HTTPHeaderMutation,
+	headerValueFilters []filterapi.HTTPHeaderValueFilter,
+	originalHeaders map[string]string,
+) *HeaderMutator {
 	return &HeaderMutator{
-		originalHeaders: originalHeaders,
-		headerMutations: headerMutations,
+		originalHeaders:    cloneHeaders(originalHeaders),
+		headerMutations:    headerMutations,
+		headerValueFilters: headerValueFilters,
+	}
+}
+
+func cloneHeaders(headers map[string]string) map[string]string {
+	if headers == nil {
+		return nil
+	}
+	cloned := make(map[string]string, len(headers))
+	for k, v := range headers {
+		cloned[k] = v
+	}
+	return cloned
+}
+
+// ApplyValueFilters applies backend-specific value filters to the local header map before
+// translators inspect it. These filters intentionally change the effective header value
+// for this backend attempt, unlike HeaderMutation.Remove which only masks egress headers.
+func (h *HeaderMutator) ApplyValueFilters(headers map[string]string) {
+	sets, removes := h.filterHeaderValuesFromOriginal()
+	for _, key := range removes {
+		delete(headers, key)
+	}
+	for _, hdr := range sets {
+		headers[hdr.Key()] = hdr.Value()
 	}
 }
 
@@ -34,6 +66,7 @@ func (h *HeaderMutator) Mutate(headers map[string]string, onRetry bool) (sets []
 
 	// Removes sensitive headers before sending to backend.
 	removedHeadersSet := make(map[string]struct{})
+	valueFilterRemovedSet := make(map[string]struct{})
 	if !skipRemove {
 		for _, key := range h.headerMutations.Remove {
 			if shouldIgnoreHeader(key) {
@@ -62,10 +95,25 @@ func (h *HeaderMutator) Mutate(headers map[string]string, onRetry bool) (sets []
 		}
 	}
 
+	filteredSets, filteredRemoves := h.filterHeaderValuesFromOriginal()
+	for _, key := range filteredRemoves {
+		valueFilterRemovedSet[key] = struct{}{}
+		delete(headers, key)
+		removes = append(removes, key)
+	}
+	for _, hdr := range filteredSets {
+		setHeadersSet[hdr.Key()] = struct{}{}
+		headers[hdr.Key()] = hdr.Value()
+		sets = append(sets, hdr)
+	}
+
 	if onRetry {
 		// Restore original headers on retry, only if not being removed, set or not already present.
 		for key, v := range h.originalHeaders {
 			if shouldIgnoreHeader(key) {
+				continue
+			}
+			if _, valueFilterRemoved := valueFilterRemovedSet[key]; valueFilterRemoved {
 				continue
 			}
 			_, isRemoved := removedHeadersSet[key]
@@ -89,7 +137,8 @@ func (h *HeaderMutator) Mutate(headers map[string]string, onRetry bool) (sets []
 			}
 			_, isSet := setHeadersSet[key]
 			_, isRemoved := removedHeadersSet[key]
-			if isRemoved || isSet {
+			_, valueFilterRemoved := valueFilterRemovedSet[key]
+			if isRemoved || isSet || valueFilterRemoved {
 				continue
 			}
 			originalValue, exists := h.originalHeaders[key]
@@ -102,6 +151,51 @@ func (h *HeaderMutator) Mutate(headers map[string]string, onRetry bool) (sets []
 				sets = append(sets, internalapi.Header{key, originalValue})
 			}
 		}
+	}
+	return
+}
+
+func (h *HeaderMutator) filterHeaderValuesFromOriginal() (sets []internalapi.Header, removes []string) {
+	for _, filter := range h.headerValueFilters {
+		name := strings.ToLower(filter.Name)
+		if shouldIgnoreHeader(name) {
+			continue
+		}
+
+		allowed := make(map[string]struct{}, len(filter.Values))
+		for _, v := range filter.Values {
+			v = strings.TrimSpace(v)
+			if v == "" {
+				continue
+			}
+			allowed[v] = struct{}{}
+		}
+		if len(allowed) == 0 {
+			removes = append(removes, name)
+			continue
+		}
+
+		originalValue := h.originalHeaders[name]
+		if originalValue == "" {
+			removes = append(removes, name)
+			continue
+		}
+
+		var kept []string
+		for _, part := range strings.Split(originalValue, ",") {
+			v := strings.TrimSpace(part)
+			if v == "" {
+				continue
+			}
+			if _, ok := allowed[v]; ok {
+				kept = append(kept, v)
+			}
+		}
+		if len(kept) == 0 {
+			removes = append(removes, name)
+			continue
+		}
+		sets = append(sets, internalapi.Header{name, strings.Join(kept, ", ")})
 	}
 	return
 }

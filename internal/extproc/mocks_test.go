@@ -28,6 +28,7 @@ import (
 var (
 	_ Processor                                 = &mockProcessor{}
 	_ translator.OpenAIChatCompletionTranslator = &mockTranslator{}
+	_ translator.RequestHeadersSetter           = &mockTranslator{}
 )
 
 func newMockProcessor(_ *filterapi.RuntimeConfig, _ *slog.Logger) Processor {
@@ -84,6 +85,14 @@ type mockTranslator struct {
 	retResponseModel            internalapi.ResponseModel
 	retErr                      error
 	expForceRequestBodyMutation bool
+	expRequestHeaders           map[string]string
+}
+
+// SetRequestHeaders implements [translator.RequestHeadersSetter].
+func (m *mockTranslator) SetRequestHeaders(headers map[string]string) {
+	if m.expRequestHeaders != nil {
+		require.Equal(m.t, m.expRequestHeaders, headers)
+	}
 }
 
 // RequestBody implements [translator.OpenAIChatCompletionTranslator].

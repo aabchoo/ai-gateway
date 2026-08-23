@@ -701,8 +701,9 @@ func (u *upstreamProcessor[ReqT, RespT, RespChunkT, EndpointSpecT]) SetBackend(c
 	u.backendName = backend.Backend.Name
 	u.routeName = routeName
 	u.handler = backend.Handler
-	u.headerMutator = headermutator.NewHeaderMutator(backend.Backend.HeaderMutation, rp.requestHeaders)
+	u.headerMutator = headermutator.NewHeaderMutator(backend.Backend.HeaderMutation, backend.Backend.HeaderValueFilters, rp.requestHeaders)
 	u.bodyMutator = bodymutator.NewBodyMutator(backend.Backend.BodyMutation, rp.originalRequestBodyRaw)
+	u.headerMutator.ApplyValueFilters(u.requestHeaders)
 	// Header-derived labels/CEL must be able to see the overridden request model.
 	if u.modelNameOverride != "" {
 		u.requestHeaders[internalapi.ModelNameHeaderKeyDefault] = u.modelNameOverride

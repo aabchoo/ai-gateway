@@ -195,6 +195,8 @@ type Backend struct {
 	Auth *BackendAuth `json:"auth,omitempty"`
 	// Sensitive Headers to be removed from the request before sending to the backend. Optional.
 	HeaderMutation *HTTPHeaderMutation `json:"httpHeaderMutation,omitempty"`
+	// HeaderValueFilters filter comma-separated request header values before sending to the backend. Optional.
+	HeaderValueFilters []HTTPHeaderValueFilter `json:"httpHeaderValueFilters,omitempty"`
 	// Body mutations to be applied to the request before sending to the backend. Optional.
 	BodyMutation *HTTPBodyMutation `json:"httpBodyMutation,omitempty"`
 }
@@ -345,6 +347,15 @@ type HTTPHeader struct {
 	Name string `json:"name"`
 	// Value is the value of HTTP Header to be matched.
 	Value string `json:"value"`
+}
+
+// HTTPHeaderValueFilter defines an allow list for values in a comma-separated request header.
+type HTTPHeaderValueFilter struct {
+	// Name is the name of the HTTP Header to filter.
+	// This is always ensured to be lower-cased like Envoy does internally.
+	Name string `json:"name"`
+	// Values is the allow list for this header. Values are compared after trimming spaces.
+	Values []string `json:"values"`
 }
 
 // LogValue implements slog.LogValuer for HTTPHeader to redact sensitive information.

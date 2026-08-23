@@ -71,6 +71,15 @@ type AIServiceBackendSpec struct {
 	// +optional
 	HeaderMutation *HTTPHeaderMutation `json:"headerMutation,omitempty"`
 
+	// HeaderValueFilters define backend-specific allow lists for comma-separated request header values.
+	// Each filter is evaluated against the original client request headers for every backend attempt,
+	// including retries and failovers.
+	// +optional
+	// +listType=map
+	// +listMapKey=name
+	// +kubebuilder:validation:MaxItems=16
+	HeaderValueFilters []HTTPHeaderValueFilter `json:"headerValueFilters,omitempty"`
+
 	// BodyMutation defines the mutation of HTTP request body JSON fields that will be applied to the request
 	// before sending it to the backend.
 	// +optional
@@ -126,4 +135,19 @@ type HTTPHeaderMutation struct {
 	// +listType=set
 	// +kubebuilder:validation:MaxItems=16
 	Remove []string `json:"remove,omitempty"`
+}
+
+// HTTPHeaderValueFilter defines an allow list for values in a comma-separated request header.
+type HTTPHeaderValueFilter struct {
+	// Name is the name of the HTTP header whose values will be filtered.
+	//
+	// +kubebuilder:validation:MinLength=1
+	Name gwapiv1.HeaderName `json:"name"`
+
+	// Values is the allow list for this header. Values are compared after trimming spaces.
+	//
+	// +listType=set
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=64
+	Values []string `json:"values"`
 }

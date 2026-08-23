@@ -306,13 +306,47 @@ spec:
                       type: object
                     maxItems: 16
                     type: array
-                    x-kubernetes-list-map-keys:
-                    - name
-                    x-kubernetes-list-type: map
-                type: object
-              schema:
-                description: |-
-                  APISchema specifies the API schema of the output format of requests from
+	                    x-kubernetes-list-map-keys:
+	                    - name
+	                    x-kubernetes-list-type: map
+	                type: object
+	              headerValueFilters:
+	                description: |-
+	                  HeaderValueFilters define backend-specific allow lists for comma-separated request header values.
+	                  Each filter is evaluated against the original client request headers for every backend attempt,
+	                  including retries and failovers.
+	                items:
+	                  description: HTTPHeaderValueFilter defines an allow list for values in
+	                    a comma-separated request header.
+	                  properties:
+	                    name:
+	                      description: Name is the name of the HTTP header whose values will
+	                        be filtered.
+	                      maxLength: 256
+	                      minLength: 1
+	                      pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+	                      type: string
+	                    values:
+	                      description: Values is the allow list for this header. Values are
+	                        compared after trimming spaces.
+	                      items:
+	                        type: string
+	                      maxItems: 64
+	                      minItems: 1
+	                      type: array
+	                      x-kubernetes-list-type: set
+	                  required:
+	                  - name
+	                  - values
+	                  type: object
+	                maxItems: 16
+	                type: array
+	                x-kubernetes-list-map-keys:
+	                - name
+	                x-kubernetes-list-type: map
+	              schema:
+	                description: |-
+	                  APISchema specifies the API schema of the output format of requests from
                   Envoy that this AIServiceBackend can accept as incoming requests.
                   Based on this schema, the ai-gateway will perform the necessary transformation for
                   the pair of AIGatewayRouteSpec.APISchema and AIServiceBackendSpec.APISchema.
@@ -721,13 +755,47 @@ spec:
                       type: object
                     maxItems: 16
                     type: array
-                    x-kubernetes-list-map-keys:
-                    - name
-                    x-kubernetes-list-type: map
-                type: object
-              schema:
-                description: |-
-                  APISchema specifies the API schema of the output format of requests from
+	                    x-kubernetes-list-map-keys:
+	                    - name
+	                    x-kubernetes-list-type: map
+	                type: object
+	              headerValueFilters:
+	                description: |-
+	                  HeaderValueFilters define backend-specific allow lists for comma-separated request header values.
+	                  Each filter is evaluated against the original client request headers for every backend attempt,
+	                  including retries and failovers.
+	                items:
+	                  description: HTTPHeaderValueFilter defines an allow list for values in
+	                    a comma-separated request header.
+	                  properties:
+	                    name:
+	                      description: Name is the name of the HTTP header whose values will
+	                        be filtered.
+	                      maxLength: 256
+	                      minLength: 1
+	                      pattern: ^[A-Za-z0-9!#$%&'*+\-.^_\x60|~]+$
+	                      type: string
+	                    values:
+	                      description: Values is the allow list for this header. Values are
+	                        compared after trimming spaces.
+	                      items:
+	                        type: string
+	                      maxItems: 64
+	                      minItems: 1
+	                      type: array
+	                      x-kubernetes-list-type: set
+	                  required:
+	                  - name
+	                  - values
+	                  type: object
+	                maxItems: 16
+	                type: array
+	                x-kubernetes-list-map-keys:
+	                - name
+	                x-kubernetes-list-type: map
+	              schema:
+	                description: |-
+	                  APISchema specifies the API schema of the output format of requests from
                   Envoy that this AIServiceBackend can accept as incoming requests.
                   Based on this schema, the ai-gateway will perform the necessary transformation for
                   the pair of AIGatewayRouteSpec.APISchema and AIServiceBackendSpec.APISchema.
